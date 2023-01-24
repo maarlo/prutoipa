@@ -2,4 +2,5 @@
 members = [
   "prutoipa",
   "prutoipa-build",
+  "prutoipa-test"
 ]
