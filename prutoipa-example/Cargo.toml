@@ -1,5 +1,5 @@
 [package]
-name = "prutoipa-build"
+name = "prutoipa-example"
 description = "Utoipa implementations using Prost! code generation engine."
 version = "0.0.0"
 edition = "2021"
@@ -12,6 +12,6 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-prost = "0.11.7"
-prost-types = "0.11.7"
-thiserror = "1.0.38"
+prost = "0.11.6"
+prost-build = "0.11.6"
+prutoipa-build = { path = "../prutoipa-build" }
