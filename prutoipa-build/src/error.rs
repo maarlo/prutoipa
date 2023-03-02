@@ -1,8 +1,17 @@
-#[derive(thiserror::Error, Debug, PartialEq)]
+#[derive(thiserror::Error, Debug)]
 pub enum PrutoipaBuildError {
-    #[error("Invalid data: {0}")]
+    #[error("{0} is not implemented yet.")]
+    NotImplementedYet(String),
+
+    #[error("Output dir not set.")]
+    OutputDirNotSet,
+
+    #[error("Invalid data: {0}.")]
     InvalidData(String),
 
     #[error("Invalid descriptor set.")]
     InvalidDescriptorSet(#[from] prost::DecodeError),
+
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
 }

@@ -1,67 +1,12 @@
-use prost_types::{
-    DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
-    FileDescriptorProto, FileDescriptorSet, MessageOptions, OneofDescriptorProto,
+use prost_types::{DescriptorProto, EnumDescriptorProto, FileDescriptorProto, FileDescriptorSet};
+use std::collections::BTreeMap;
+
+use crate::{
+    descriptor::Descriptor,
+    descriptor::{enum_descriptor::EnumDescriptor, message_descriptor::MessageDescriptor},
+    error::PrutoipaBuildError,
+    package::Package,
 };
-use std::collections::{btree_map::Entry, BTreeMap};
-
-use crate::error::PrutoipaBuildError;
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Syntax {
-    Proto2,
-    Proto3,
-}
-
-impl Syntax {
-    fn get(syntax: Option<&str>) -> Result<Syntax, PrutoipaBuildError> {
-        match syntax {
-            None | Some("proto2") => Ok(Syntax::Proto2),
-            Some("proto3") => Ok(Syntax::Proto3),
-            Some(s) => Err(PrutoipaBuildError::InvalidData(format!(
-                "Unknown syntax: {s}"
-            ))),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-struct Package {
-    syntax: Syntax,
-    name: String,
-    descriptors: BTreeMap<String, Descriptor>,
-}
-
-impl Package {
-    fn new(file: FileDescriptorProto) -> Result<Self, PrutoipaBuildError> {
-        let syntax = Syntax::get(file.syntax.as_deref())?;
-        let name = file.package.ok_or(PrutoipaBuildError::InvalidData(
-            "Expected package name.".to_string(),
-        ))?;
-
-        Ok(Self {
-            syntax,
-            name,
-            descriptors: BTreeMap::<String, Descriptor>::new(),
-        })
-    }
-
-    fn register_descriptor(
-        &mut self,
-        name: String,
-        descriptor: Descriptor,
-    ) -> Result<(), PrutoipaBuildError> {
-        match self.descriptors.entry(name) {
-            Entry::Occupied(o) => Err(PrutoipaBuildError::InvalidData(format!(
-                "Descriptor '{}' registered more than once at the same package.",
-                o.key()
-            ))),
-            Entry::Vacant(v) => {
-                v.insert(descriptor);
-                Ok(())
-            }
-        }
-    }
-}
 
 #[derive(Debug, Clone, Default)]
 pub struct PackageSet {
@@ -90,12 +35,16 @@ impl PackageSet {
             .collect()
     }
 
+    pub fn get_packages(&self) -> BTreeMap<String, Package> {
+        self.packages.clone()
+    }
+
     fn register_file_descriptor_proto(
         &mut self,
         file: FileDescriptorProto,
     ) -> Result<(), PrutoipaBuildError> {
         let mut package = Package::new(file.clone())?;
-        let package_name = package.name.clone();
+        let package_name = package.get_name();
 
         match self.packages.contains_key(&package_name) {
             true => Err(PrutoipaBuildError::InvalidData(format!(
@@ -125,9 +74,12 @@ impl PackageSet {
         package: &mut Package,
         descriptor: DescriptorProto,
     ) -> Result<(), PrutoipaBuildError> {
-        let name = descriptor.name.ok_or(PrutoipaBuildError::InvalidData(
-            "Expected message name.".to_string(),
-        ))?;
+        let name = descriptor
+            .name
+            .clone()
+            .ok_or(PrutoipaBuildError::InvalidData(
+                "Expected message name.".to_string(),
+            ))?;
 
         // TODO: Check how to do it.
         // descriptor
@@ -142,15 +94,10 @@ impl PackageSet {
         //     .map(|child_descriptor| self.register_enum(package, child_descriptor))
         //     .collect::<Result<(), PrutoipaBuildError>>()?;
 
+        let syntax = package.get_syntax();
         package.register_descriptor(
             name,
-            Descriptor::Message(MessageDescriptor {
-                syntax: package.syntax,
-                package: package.name.clone(),
-                options: descriptor.options,
-                one_of: descriptor.oneof_decl,
-                fields: descriptor.field,
-            }),
+            Descriptor::Message(MessageDescriptor::new(syntax, descriptor)?),
         )
     }
 
@@ -165,89 +112,35 @@ impl PackageSet {
 
         package.register_descriptor(
             name,
-            Descriptor::Enum(EnumDescriptor {
-                values: descriptor.value,
-            }),
+            Descriptor::Enum(EnumDescriptor::new(descriptor.value)),
         )
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum Descriptor {
-    Message(MessageDescriptor),
-    Enum(EnumDescriptor),
-}
-
-#[derive(Debug, Clone)]
-pub struct MessageDescriptor {
-    pub syntax: Syntax,
-    pub package: String,
-    pub options: Option<MessageOptions>,
-    pub one_of: Vec<OneofDescriptorProto>,
-    pub fields: Vec<FieldDescriptorProto>,
-}
-
-#[derive(Debug, Clone)]
-pub struct EnumDescriptor {
-    pub values: Vec<EnumValueDescriptorProto>,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use prost::Message;
-    use prost_types::{
-        field_descriptor_proto::Type, DescriptorProto, EnumDescriptorProto,
-        EnumValueDescriptorProto, FieldDescriptorProto, FileDescriptorProto, FileDescriptorSet,
+    use prost_types::{DescriptorProto, EnumDescriptorProto, FileDescriptorProto};
+
+    use crate::{
+        descriptor::message_descriptor::field::{Field, FieldType, ScalarType},
+        syntax::Syntax,
+        tests::{get_fds_encoded, get_file_descriptor_proto},
     };
 
-    fn get_file_descriptor_proto() -> FileDescriptorProto {
-        FileDescriptorProto {
-            syntax: Some("proto3".to_string()),
-            package: Some("people".to_string()),
-            name: Some("person.proto".to_string()),
-            enum_type: vec![EnumDescriptorProto {
-                name: Some("GENDER".to_string()),
-                value: vec![
-                    EnumValueDescriptorProto {
-                        name: Some("MALE".to_string()),
-                        number: Some(0),
-                        ..Default::default()
-                    },
-                    EnumValueDescriptorProto {
-                        name: Some("FEMALE".to_string()),
-                        number: Some(1),
-                        ..Default::default()
-                    },
-                ],
-                ..Default::default()
-            }],
-            message_type: vec![DescriptorProto {
-                name: Some("Person".to_string()),
-                field: vec![FieldDescriptorProto {
-                    r#type: Some(Type::Int32.into()),
-                    name: Some("id".to_string()),
-                    number: Some(1),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            }],
-            ..Default::default()
-        }
-    }
-
-    fn get_fds_encoded(files: Vec<FileDescriptorProto>) -> Vec<u8> {
-        let mut fds_encoded = Vec::new();
-
-        FileDescriptorSet { file: files }
-            .encode(&mut fds_encoded)
-            .unwrap();
-
-        fds_encoded
-    }
-
     #[test]
-    fn package_simple() {
+    fn package_set_simple() {
+        fn get_field(descriptors: BTreeMap<String, Descriptor>, name: String) -> Option<Field> {
+            if let Descriptor::Message(message_descriptor) = descriptors.get("Person").unwrap() {
+                message_descriptor
+                    .get_fields()
+                    .into_iter()
+                    .find(|field| field.get_name() == name)
+            } else {
+                None
+            }
+        }
+
         let fds_encoded = get_fds_encoded(vec![get_file_descriptor_proto()]);
 
         let mut package_set = PackageSet::default();
@@ -255,11 +148,26 @@ mod tests {
             .register_file_descriptor_set_encoded(fds_encoded.as_slice())
             .unwrap();
 
-        let package_name = package_set.packages.get("people").unwrap().name.clone();
-        let package_syntax = package_set.packages.get("people").unwrap().syntax;
+        let mut package = package_set.packages.get("people").unwrap().to_owned();
+        let package_name = package.get_name();
+        let package_syntax = package.get_syntax();
 
         assert_eq!(package_name, "people");
         assert_eq!(package_syntax, Syntax::Proto3);
+
+        let field = get_field(package.get_descriptors(), "id".to_string()).unwrap();
+        let field_name = field.get_name();
+        let field_type = field.get_field_type();
+
+        assert_eq!(field_name, "id");
+        assert_eq!(field_type, FieldType::Scalar(ScalarType::I32));
+
+        let field = get_field(package.get_descriptors(), "other_attribute".to_string()).unwrap();
+        let field_name = field.get_name();
+        let field_type = field.get_field_type();
+
+        assert_eq!(field_name, "other_attribute");
+        assert_eq!(field_type, FieldType::Scalar(ScalarType::String));
     }
 
     #[test]
@@ -274,12 +182,11 @@ mod tests {
             .register_file_descriptor_set_encoded(fds_encoded.as_slice())
             .err();
 
-        assert_eq!(
-            err,
-            Some(PrutoipaBuildError::InvalidData(
-                "Package 'people' already defined.".to_string()
-            ))
-        );
+        let expected_err = Some(PrutoipaBuildError::InvalidData(
+            "Package 'people' already defined.".to_string(),
+        ));
+
+        assert_eq!(format!("{err:?}"), format!("{expected_err:?}"));
     }
 
     #[test]
@@ -298,12 +205,11 @@ mod tests {
             .register_file_descriptor_set_encoded(fds_encoded.as_slice())
             .err();
 
-        assert_eq!(
-            err,
-            Some(PrutoipaBuildError::InvalidData(
-                "Expected message name.".to_string()
-            ))
-        );
+        let expected_err = Some(PrutoipaBuildError::InvalidData(
+            "Expected message name.".to_string(),
+        ));
+
+        assert_eq!(format!("{err:?}"), format!("{expected_err:?}"));
     }
 
     #[test]
@@ -322,11 +228,10 @@ mod tests {
             .register_file_descriptor_set_encoded(fds_encoded.as_slice())
             .err();
 
-        assert_eq!(
-            err,
-            Some(PrutoipaBuildError::InvalidData(
-                "Expected enum name.".to_string()
-            ))
-        );
+        let expected_err = Some(PrutoipaBuildError::InvalidData(
+            "Expected enum name.".to_string(),
+        ));
+
+        assert_eq!(format!("{err:?}"), format!("{expected_err:?}"));
     }
 }

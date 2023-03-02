@@ -30,5 +30,7 @@ fn main() {
     let descriptors = fs::read(descriptors_file_path).unwrap();
     prutoipa_build::Builder::new()
         .register_descriptors(&descriptors)
+        .unwrap()
+        .build()
         .unwrap();
 }

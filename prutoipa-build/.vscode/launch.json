@@ -22,6 +22,27 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug package_set_simple unit test in library 'prutoipa-build'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=prutoipa-build"
+                ],
+                "filter": {
+                    "name": "prutoipa-build",
+                    "kind": "lib"
+                }
+            },
+            "args": [
+                "package_set_simple"
+            ],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }
