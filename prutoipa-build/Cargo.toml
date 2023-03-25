@@ -1,7 +1,7 @@
 [package]
 name = "prutoipa-build"
 description = "Utoipa implementations using Prost! code generation engine."
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 keywords = ["protobuf", "OpenAPI", "utoipa"]
 categories = ["web-programming", "encoding"]

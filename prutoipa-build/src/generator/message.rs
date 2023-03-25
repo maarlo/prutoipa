@@ -224,8 +224,8 @@ fn get_field_object_component(
     field_descriptor: String,
 ) -> String {
     if current_package == field_package {
-        format!("{indent}{field_descriptor}::schema()")
+        format!("{indent}{field_descriptor}::schema().1")
     } else {
-        format!("{indent}super::{field_package}::{field_descriptor}::schema()")
+        format!("{indent}super::{field_package}::{field_descriptor}::schema().1")
     }
 }
