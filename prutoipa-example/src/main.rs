@@ -29,7 +29,8 @@ fn main() {
     // Build utoipa code
     let descriptors = fs::read(descriptors_file_path).unwrap();
     prutoipa_build::Builder::new()
-        .register_descriptors(&descriptors)
+        // .generate_enum_values()
+        .register_descriptors_encoded(&descriptors)
         .unwrap()
         .build()
         .unwrap();

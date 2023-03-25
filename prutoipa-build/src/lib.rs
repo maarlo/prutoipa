@@ -15,6 +15,7 @@ use error::PrutoipaBuildError;
 use generator::{enumeration::generate_enum, message::generate_message};
 use package::Package;
 use package_set::PackageSet;
+use prost_types::FileDescriptorSet;
 
 #[derive(Debug, Default)]
 pub struct Builder {
@@ -41,18 +42,29 @@ impl Builder {
         self
     }
 
+    /// Generate utoipa enum_values property at enums
     pub fn generate_enum_values(&mut self) -> &mut Self {
         self.generate_enum_values = true;
         self
     }
 
     /// Register an encoded `FileDescriptorSet` with this `Builder`
-    pub fn register_descriptors(
+    pub fn register_descriptors_encoded(
         &mut self,
         fds_encoded: &[u8],
     ) -> Result<&mut Self, error::PrutoipaBuildError> {
         self.package_set
             .register_file_descriptor_set_encoded(fds_encoded)?;
+
+        Ok(self)
+    }
+
+    /// Register a `FileDescriptorSet` with this `Builder`
+    pub fn register_descriptors(
+        &mut self,
+        fds: FileDescriptorSet,
+    ) -> Result<&mut Self, error::PrutoipaBuildError> {
+        self.package_set.register_file_descriptor_set(fds)?;
 
         Ok(self)
     }
