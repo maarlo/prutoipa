@@ -36,7 +36,7 @@ fn write_head<W: Write>(
         format!("{i_00}impl<'__s> utoipa::ToSchema<'__s> for {name} {{"),
         format!("{i_04}fn schema() -> (&'__s str, utoipa::openapi::RefOr<utoipa::openapi::schema::Schema>) {{"),
         format!("{i_08}("),
-        format!("{i_12}\"{package_name}::{name}\","),
+        format!("{i_12}\"{package_name}.{name}\","),
         format!("{i_12}utoipa::openapi::ObjectBuilder::new()"),
         format!("{i_16}.schema_type(utoipa::openapi::SchemaType::Integer)"),
         format!("{i_16}.format(Some(utoipa::openapi::SchemaFormat::KnownFormat("),
