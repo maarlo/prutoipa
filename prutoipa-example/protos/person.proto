@@ -9,7 +9,7 @@ enum GENDER {
 
 message Person {
     int32 id = 1;
-    string name = 2;
-    optional string surname = 3;
-    optional string email = 4;
+    repeated int64 neighbours = 2;
+    string name = 3;
+    optional string surname = 4;
 }

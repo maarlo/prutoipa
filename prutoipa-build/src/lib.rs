@@ -13,7 +13,6 @@ use std::{
 use descriptor::Descriptor;
 use error::PrutoipaBuildError;
 use generator::{enumeration::generate_enum, message::generate_message};
-use package::Package;
 use package_set::PackageSet;
 use prost_types::FileDescriptorSet;
 
@@ -83,53 +82,59 @@ impl Builder {
         let mut output = self.get_out_dir()?;
         output.push("DUMMY_FILENAME");
 
-        self.package_set
-            .get_packages()
-            .into_iter()
-            .map(|(_, mut package)| self.generate(&mut output, &mut package))
-            .collect::<Result<Vec<()>, PrutoipaBuildError>>()?;
+        let write_factory = move |package_name: String| {
+            output.set_file_name(format!("{}.utoipa.rs", package_name));
+
+            let file = std::fs::OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .create(true)
+                .open(&output)?;
+
+            Ok(BufWriter::new(file))
+        };
+
+        let writers = self.generate(write_factory)?;
+        for (_, mut writer) in writers {
+            writer.flush()?;
+        }
 
         Ok(())
     }
 
-    fn generate(
+    pub fn generate<W: Write, F: FnMut(String) -> std::io::Result<W>>(
         &self,
-        output: &mut PathBuf,
-        package: &mut Package,
-    ) -> Result<(), PrutoipaBuildError> {
-        output.set_file_name(format!("{}.utoipa.rs", package.get_name()));
-
-        let file = std::fs::OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(&output)?;
-
-        let mut writer = BufWriter::new(file);
-
-        let generator_result = package
-            .get_descriptors()
+        mut write_factory: F,
+    ) -> Result<Vec<(String, W)>, PrutoipaBuildError> {
+        self.package_set
+            .get_packages()
             .into_iter()
-            .map(|(descriptor_name, descriptor)| match descriptor {
-                Descriptor::Message(message) => {
-                    generate_message(&mut writer, package.get_name(), descriptor_name, message)
-                }
-                Descriptor::Enum(enum_descriptor) => generate_enum(
-                    &mut writer,
-                    package.get_name(),
-                    descriptor_name,
-                    enum_descriptor,
-                    self.generate_enum_values,
-                ),
+            .map(|(package_name, mut package)| {
+                let mut writer = write_factory(package_name.clone())?;
+
+                package
+                    .get_descriptors()
+                    .into_iter()
+                    .map(|(descriptor_name, descriptor)| match descriptor {
+                        Descriptor::Message(message) => generate_message(
+                            &mut writer,
+                            package.get_name(),
+                            descriptor_name,
+                            message,
+                        ),
+                        Descriptor::Enum(enum_descriptor) => generate_enum(
+                            &mut writer,
+                            package.get_name(),
+                            descriptor_name,
+                            enum_descriptor,
+                            self.generate_enum_values,
+                        ),
+                    })
+                    .collect::<Result<Vec<()>, PrutoipaBuildError>>()?;
+
+                Ok((package_name, writer))
             })
-            .collect::<Result<Vec<()>, PrutoipaBuildError>>();
-
-        writer.flush()?;
-
-        match generator_result {
-            Ok(_) => Ok(()),
-            Err(err) => Err(err),
-        }
+            .collect::<Result<Vec<(String, W)>, PrutoipaBuildError>>()
     }
 }
 

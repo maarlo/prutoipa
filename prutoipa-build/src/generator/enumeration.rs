@@ -1,7 +1,4 @@
-use std::{
-    fs::File,
-    io::{BufWriter, Write},
-};
+use std::io::Write;
 
 use crate::{
     descriptor::enum_descriptor::{EnumDescriptor, EnumValue},
@@ -9,8 +6,8 @@ use crate::{
     generator::Indent,
 };
 
-pub fn generate_enum(
-    writer: &mut BufWriter<File>,
+pub fn generate_enum<W: Write>(
+    writer: &mut W,
     package_name: String,
     name: String,
     enum_descriptor: EnumDescriptor,
@@ -23,8 +20,8 @@ pub fn generate_enum(
     res
 }
 
-fn write_head(
-    writer: &mut BufWriter<File>,
+fn write_head<W: Write>(
+    writer: &mut W,
     package_name: String,
     name: String,
 ) -> Result<(), PrutoipaBuildError> {
@@ -55,7 +52,7 @@ fn write_head(
     Ok(())
 }
 
-fn write_tail(writer: &mut BufWriter<File>) -> Result<(), PrutoipaBuildError> {
+fn write_tail<W: Write>(writer: &mut W) -> Result<(), PrutoipaBuildError> {
     let i_00 = Indent(0);
     let i_04 = Indent(1);
     let i_08 = Indent(2);
@@ -76,8 +73,8 @@ fn write_tail(writer: &mut BufWriter<File>) -> Result<(), PrutoipaBuildError> {
     Ok(())
 }
 
-fn write_values(
-    writer: &mut BufWriter<File>,
+fn write_values<W: Write>(
+    writer: &mut W,
     enum_values: Vec<EnumValue>,
     generate_enum_values: bool,
 ) -> Result<(), PrutoipaBuildError> {

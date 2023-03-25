@@ -1,7 +1,4 @@
-use std::{
-    fs::File,
-    io::{BufWriter, Write},
-};
+use std::io::Write;
 
 use crate::{
     descriptor::message_descriptor::{
@@ -12,8 +9,8 @@ use crate::{
     generator::Indent,
 };
 
-pub fn generate_message(
-    writer: &mut BufWriter<File>,
+pub fn generate_message<W: Write>(
+    writer: &mut W,
     package_name: String,
     name: String,
     message: MessageDescriptor,
@@ -31,8 +28,8 @@ pub fn generate_message(
     res.map(|_| ())
 }
 
-fn write_head(
-    writer: &mut BufWriter<File>,
+fn write_head<W: Write>(
+    writer: &mut W,
     package_name: String,
     name: String,
 ) -> Result<(), PrutoipaBuildError> {
@@ -57,7 +54,7 @@ fn write_head(
     Ok(())
 }
 
-fn write_tail(writer: &mut BufWriter<File>) -> Result<(), PrutoipaBuildError> {
+fn write_tail<W: Write>(writer: &mut W) -> Result<(), PrutoipaBuildError> {
     let i_00 = Indent(0);
     let i_04 = Indent(1);
     let i_08 = Indent(2);
@@ -78,8 +75,8 @@ fn write_tail(writer: &mut BufWriter<File>) -> Result<(), PrutoipaBuildError> {
     Ok(())
 }
 
-fn write_field(
-    writer: &mut BufWriter<File>,
+fn write_field<W: Write>(
+    writer: &mut W,
     package_name: String,
     field: Field,
 ) -> Result<(), PrutoipaBuildError> {
@@ -92,8 +89,8 @@ fn write_field(
     }
 }
 
-fn write_field_scalar(
-    writer: &mut BufWriter<File>,
+fn write_field_scalar<W: Write>(
+    writer: &mut W,
     field: Field,
     scalar_type: ScalarType,
 ) -> Result<(), PrutoipaBuildError> {
@@ -164,8 +161,8 @@ fn get_field_scalar_component(base_indent: usize, scalar_type: ScalarType) -> Ve
     property_str
 }
 
-fn write_field_object(
-    writer: &mut BufWriter<File>,
+fn write_field_object<W: Write>(
+    writer: &mut W,
     field: Field,
     current_package: String,
     field_package: String,
