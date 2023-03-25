@@ -1,3 +1,4 @@
+use heck::ToUpperCamelCase;
 use prost_types::FileDescriptorProto;
 use std::collections::{btree_map::Entry, BTreeMap};
 
@@ -43,7 +44,9 @@ impl Package {
         name: String,
         descriptor: Descriptor,
     ) -> Result<(), PrutoipaBuildError> {
-        match self.descriptors.entry(name) {
+        let descriptor_name = name.to_upper_camel_case();
+
+        match self.descriptors.entry(descriptor_name) {
             Entry::Occupied(o) => Err(PrutoipaBuildError::InvalidData(format!(
                 "Descriptor '{}' registered more than once at the same package.",
                 o.key()

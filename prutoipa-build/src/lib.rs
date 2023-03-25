@@ -12,7 +12,7 @@ use std::{
 
 use descriptor::Descriptor;
 use error::PrutoipaBuildError;
-use generator::message::generate_message;
+use generator::{enumeration::generate_enum, message::generate_message};
 use package::Package;
 use package_set::PackageSet;
 
@@ -20,6 +20,7 @@ use package_set::PackageSet;
 pub struct Builder {
     out_dir: Option<PathBuf>,
     package_set: PackageSet,
+    generate_enum_values: bool,
 }
 
 impl Builder {
@@ -37,6 +38,11 @@ impl Builder {
         P: Into<PathBuf>,
     {
         self.out_dir = Some(path.into());
+        self
+    }
+
+    pub fn generate_enum_values(&mut self) -> &mut Self {
+        self.generate_enum_values = true;
         self
     }
 
@@ -94,15 +100,15 @@ impl Builder {
             .into_iter()
             .map(|(descriptor_name, descriptor)| match descriptor {
                 Descriptor::Message(message) => {
-                    generate_message(&mut writer, descriptor_name, message)
+                    generate_message(&mut writer, package.get_name(), descriptor_name, message)
                 }
-                _ => {
-                    println!(
-                        "{}",
-                        PrutoipaBuildError::NotImplementedYet("Enum Descriptor".to_string())
-                    );
-                    Ok(())
-                }
+                Descriptor::Enum(enum_descriptor) => generate_enum(
+                    &mut writer,
+                    package.get_name(),
+                    descriptor_name,
+                    enum_descriptor,
+                    self.generate_enum_values,
+                ),
             })
             .collect::<Result<Vec<()>, PrutoipaBuildError>>();
 

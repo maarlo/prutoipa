@@ -1,3 +1,4 @@
+pub mod enumeration;
 pub mod message;
 
 use std::fmt::{Display, Formatter};

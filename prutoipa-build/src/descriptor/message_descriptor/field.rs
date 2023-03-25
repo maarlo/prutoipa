@@ -51,10 +51,17 @@ impl Field {
     fn get_type(field: &FieldDescriptorProto) -> Result<FieldType, PrutoipaBuildError> {
         match field.type_name.as_ref() {
             Some(type_name) => {
-                // TODO: It can be a map.
-                Err(PrutoipaBuildError::NotImplementedYet(format!(
-                    "Field with type {type_name}"
-                )))
+                let splitted_type_name = type_name.split(".").collect::<Vec<&str>>();
+                if splitted_type_name.len() == 3 {
+                    Ok(FieldType::Object {
+                        package: splitted_type_name[1].to_string(),
+                        descriptor: splitted_type_name[2].to_string(),
+                    })
+                } else {
+                    Err(PrutoipaBuildError::InvalidData(format!(
+                        "The object {type_name} is not valid."
+                    )))
+                }
             }
             None => {
                 let prost_type = Type::from_i32(
@@ -102,18 +109,16 @@ impl Field {
         } else if field.oneof_index.is_some() {
             assert_eq!(label, Label::Optional);
             Ok(FieldModifier::Optional)
-        } else if matches!(field_type, FieldType::Map(_, _)) {
-            assert_eq!(label, Label::Repeated);
-            Ok(FieldModifier::Repeated)
         } else {
             match label {
                 Label::Optional => match syntax {
                     Syntax::Proto2 => Ok(FieldModifier::Optional),
                     Syntax::Proto3 => match field_type {
                         FieldType::Scalar(_) => Ok(FieldModifier::Required),
-                        FieldType::Enum(_) => Ok(FieldModifier::Optional),
-                        FieldType::Message(_) => Ok(FieldModifier::Optional),
-                        FieldType::Map(_, _) => Ok(FieldModifier::Optional),
+                        FieldType::Object {
+                            package: _,
+                            descriptor: _,
+                        } => Ok(FieldModifier::Optional),
                     },
                 },
                 Label::Required => Ok(FieldModifier::Required),
@@ -126,9 +131,7 @@ impl Field {
 #[derive(Debug, Clone, PartialEq)]
 pub enum FieldType {
     Scalar(ScalarType),
-    Enum(String),
-    Message(String),
-    Map(ScalarType, Box<FieldType>),
+    Object { package: String, descriptor: String },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -155,6 +158,16 @@ impl ScalarType {
                 "{}",
                 PrutoipaBuildError::NotImplementedYet("Bytes".to_string())
             ),
+        }
+    }
+
+    pub fn get_utoipa_format(&self) -> Option<&'static str> {
+        match self {
+            Self::I32 | Self::U32 => Some("Int32"),
+            Self::I64 | Self::U64 => Some("Int64"),
+            Self::F32 => Some("Float"),
+            Self::F64 => Some("Double"),
+            _ => None,
         }
     }
 }
