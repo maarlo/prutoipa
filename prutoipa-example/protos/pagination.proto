@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package pagination;
+
+message Pagination {
+    uint64 num_pages = 1;
+    uint64 current_page = 2;
+    uint64 elements_page = 3;
+}
+
+message PaginationRequest {
+    optional uint64 pg = 1;
+    optional uint64 ct = 2;
+}

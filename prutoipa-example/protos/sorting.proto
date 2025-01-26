@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package sorting;
+
+enum SortingOrderType {
+    ASC = 0;
+    DESC = 1;
+}
+
+message SortingColumn {
+    string col = 1;
+    SortingOrderType ord = 2;
+}
+
+message Sorting {
+    repeated SortingColumn columns = 1;
+}
+
+message SortingRequest {
+    repeated SortingColumn st = 1;
+}

@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package v1_users;
+
+import "pagination.proto";
+import "sorting.proto";
+
+message User {
+    string id = 1;
+    string username = 2;
+    bool active = 3;
+}
+
+message GetAllResponse {
+    pagination.Pagination pagination = 1;
+    sorting.Sorting sorting = 2;
+    repeated User users = 3;
+}
+
+message GetByIdResponse {
+    User user = 1;
+}
+
+message UpdateByIdRequest {
+    User user = 1;
+}
+
+message UpdateByIdResponse {
+    User user = 1;
+}
